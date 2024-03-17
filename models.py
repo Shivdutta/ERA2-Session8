@@ -8,13 +8,12 @@ from torchsummary import summary
 
 #Squeeze and Expand -- Xmas tree
 class Session8_Model(nn.Module):    
-    def __init__(self, normalization='batch'):
+    def __init__(self,dropout_value=0.1,number_of_groups= 2 normalization='batch'):
         # Initialize the Module class
         super(Session8_Model, self).__init__()
 
-        # Dropout value of 10%
-        self.dropout_value = 0.1
-        self.number_of_groups = 2
+        self.dropout_value = dropout_value
+        self.number_of_groups = number_of_groups
 
         # Convolutional Block-1
         self.conv_block1 = self.custom_conv_block(in_channels=3, out_channels=20, kernel_size=3, padding=1, normalization=normalization)
