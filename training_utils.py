@@ -4,96 +4,106 @@ from torchsummary import summary
 from tqdm import tqdm
 import torch.nn.functional as F
 
-def train(model, device, train_loader, optimizer, epoch,scheduler):
-  """
-    Trains the specified model using the given data loader and optimizer for one epoch.
 
-    Args:
-        model (torch.nn.Module): The neural network model to train.
-        device (torch.device): The device to perform training on (e.g., "cuda" or "cpu").
-        train_loader (torch.utils.data.DataLoader): DataLoader for training data.
-        optimizer (torch.optim.Optimizer): Optimizer to use for training.
-        epoch (int): Current epoch number.
-        scheduler (torch.optim.lr_scheduler._LRScheduler, optional): Learning rate scheduler (default: None).
-
-    Returns:
-        tuple: A tuple containing the training accuracy and losses as lists.
-  """
-  train_losses = []
-  train_acc = []
-  model.train()
-  pbar = tqdm(train_loader)
-  correct = 0
-  processed = 0
-  for batch_idx, (data, target) in enumerate(pbar):
-    # get samples
-    data, target = data.to(device), target.to(device)
-
-    # Init
-    optimizer.zero_grad()
-    # In PyTorch, we need to set the gradients to zero before starting to do backpropragation because PyTorch accumulates the gradients on subsequent backward passes.
-    # Because of this, when you start your training loop, ideally you should zero out the gradients so that you do the parameter update correctly.
-
-    # Predict
-    y_pred = model(data)
-
-    # Calculate loss
-
-    #below 2 lines are for debug
-    #print('y_pred.shape',y_pred.shape)
-    #print('target.shape',target.shape)
-    loss = F.nll_loss(y_pred, target)
-    train_losses.append(loss)
-  
-    # Backpropagation
-    loss.backward()
-    optimizer.step()
-
-    if not  scheduler is None:
-      scheduler.step()
-
-    # Update pbar-tqdm
-
-    pred = y_pred.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-    correct += pred.eq(target.view_as(pred)).sum().item()
-    processed += len(data)
-
-    pbar.set_description(desc= f'Loss={loss.item()} Batch_id={batch_idx} Accuracy={100*correct/processed:0.2f}')
-    train_acc.append(100*correct/processed)
-    
-  return train_acc,train_losses  
-
-def test(model, device, test_loader):    
+def get_correct_predictions(prediction, labels):
     """
-    Evaluates the specified model on the test dataset.
-
-    Args:
-        model (torch.nn.Module): The neural network model to evaluate.
-        device (torch.device): The device to perform evaluation on (e.g., "cuda" or "cpu").
-        test_loader (torch.utils.data.DataLoader): DataLoader for test data.
-
-    Returns:
-        tuple: A tuple containing the test accuracy and loss as lists.
+    Function to return total number of correct predictions
+    :param prediction: Model predictions on a given sample of data
+    :param labels: Correct labels of a given sample of data
+    :return: Number of correct predictions
     """
-    test_losses = []
-    test_acc = []   
+    return prediction.argmax(dim=1).eq(labels).sum().item()
+
+def train(model, device, train_loader, optimizer, criterion, scheduler=None):
+    """
+    Function to train model on the training dataset
+    :param model: Model architecture
+    :param device: Device on which training is to be done (GPU/CPU)
+    :param train_loader: DataLoader for training dataset
+    :param optimizer: Optimization algorithm to be used for updating weights
+    :param criterion: Loss function for training
+    :param scheduler: Scheduler for learning rate
+    """
+    # Enable layers like Dropout for model training
+    model.train()
+
+    # Utility to display training progress
+    pbar = tqdm(train_loader)
+
+    # Variables to track loss and accuracy during training
+    train_loss = 0
+    correct = 0
+    processed = 0
+
+    # Iterate over each batch and fetch images and labels from the batch
+    for batch_idx, (data, target) in enumerate(pbar):
+
+        # Put the images and labels on the selected device
+        data, target = data.to(device), target.to(device)
+
+        # Reset the gradients for each batch
+        optimizer.zero_grad()
+
+        # Predict
+        pred = model(data)
+
+        # Calculate loss
+        loss = criterion(pred, target)
+        train_loss += loss.item()
+
+        # Backpropagation
+        loss.backward()
+        optimizer.step()
+
+        if scheduler:
+            scheduler.step()
+
+        # Get total number of correct predictions
+        correct += get_correct_predictions(pred, target)
+        processed += len(data)
+
+        # Display the training information
+        pbar.set_description(
+            desc=f'Train: Loss={loss.item():0.4f} Batch_id={batch_idx} Accuracy={100 * correct / processed:0.2f}')
+
+    return correct, processed, train_loss
+
+
+def test(model, device, test_loader, criterion):
+    """
+    Function to test the model training progress on the test dataset
+    :param model: Model architecture
+    :param device: Device on which training is to be done (GPU/CPU)
+    :param test_loader: DataLoader for test dataset
+    :param criterion: Loss function for test dataset
+    """
+    # Disable layers like Dropout for model inference
     model.eval()
+
+    # Variables to track loss and accuracy
     test_loss = 0
     correct = 0
-    with torch.no_grad():
-        for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
-            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-            correct += pred.eq(target.view_as(pred)).sum().item()
 
+    # Disable gradient updation
+    with torch.no_grad():
+        # Iterate over each batch and fetch images and labels from the batch
+        for batch_idx, (data, target) in enumerate(test_loader):
+
+            # Put the images and labels on the selected device
+            data, target = data.to(device), target.to(device)
+
+            # Pass the images to the output and get the model predictions
+            output = model(data)
+            test_loss += criterion(output, target, reduction='sum').item()  # sum up batch loss
+
+            # Sum up batch correct predictions
+            correct += get_correct_predictions(output, target)
+
+    # Calculate test loss for a epoch
     test_loss /= len(test_loader.dataset)
-    test_losses.append(test_loss)
-    
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n'.format(
+
+    print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n'.format(
         test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
 
-    test_acc.append(100. * correct / len(test_loader.dataset))
-    return test_acc,test_losses
+    return correct, test_loss

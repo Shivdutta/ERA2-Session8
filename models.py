@@ -8,10 +8,10 @@ from torchsummary import summary
 
 #Squeeze and Expand -- Xmas tree
 class Session8_Model(nn.Module):    
-    def __init__(self,dropout_value=0.1,number_of_groups= 2 normalization='batch'):
+    def __init__(self,dropout_value=0,number_of_groups= 0,normalization='batch'):
         # Initialize the Module class
         super(Session8_Model, self).__init__()
-
+        #dropout_value =0.1  number_of_groups =2
         self.dropout_value = dropout_value
         self.number_of_groups = number_of_groups
 
@@ -103,7 +103,7 @@ class Session8_Model(nn.Module):
         :param normalization: Type of normalization technique used
         :param last_layer: Flag to indicate if the layer is last convolutional layer of the network
         """
-        _norm_layer = self.get_normalization_layer(self,normalization,out_channels,self.number_of_groups)
+        _norm_layer = self.get_normalization_layer(normalization,out_channels,self.number_of_groups)
 
         # For last layer only return the convolution output
         if last_layer:
