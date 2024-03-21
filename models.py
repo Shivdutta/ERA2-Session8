@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.modules import activation
 from tqdm import tqdm
 from torchsummary import summary
 
@@ -92,7 +93,8 @@ class Session8_Model(nn.Module):
                             padding: int = 0,
                             stride: int = 1,
                             normalization: str = "batch",
-                            last_layer: bool = False):
+                            last_layer: bool = False,
+                            _activation_fn = nn.ReLU()):
         """
         Method to return a standard convolution block
         :param in_channels: Number of input channels
@@ -111,9 +113,9 @@ class Session8_Model(nn.Module):
         
         return nn.Sequential(
             nn.Conv2d(in_channels=in_channels, out_channels=out_channels, stride=stride, kernel_size=kernel_size, bias=False, padding=padding),
-            nn.ReLU(),
+            _activation_fn,
             _norm_layer,
-            nn.Dropout(self.dropout_value)
+            nn.Dropout(self.dropout_value)           
         )
 
 
