@@ -7,9 +7,18 @@ from torchsummary import summary
 
 """************************************************Session8 Start************************************************"""
 
-#Squeeze and Expand -- Xmas tree
+
 class Session8_Model(nn.Module):    
     def __init__(self,dropout_value=0,number_of_groups= 0,normalization='batch'):
+        """
+            Initializes the Session8_Model with customizable dropout value, number of groups, and normalization method.
+        
+            Args:
+                dropout_value (float): Dropout probability to be applied in the network. Default is 0.
+                number_of_groups (int): Number of groups for Group Normalization. Default is 0.
+                normalization (str): Type of normalization to be used. Options: 'batch', 'group', 'instance', or 'layer'.
+                                     Default is 'batch'.
+        """
         # Initialize the Module class
         super(Session8_Model, self).__init__()
         #dropout_value =0.1  number_of_groups =2
@@ -45,6 +54,16 @@ class Session8_Model(nn.Module):
         self.conv_block10 = self.custom_conv_block(in_channels=32, out_channels=10, kernel_size=1, padding=0, last_layer=True, normalization=normalization)
 
     def forward(self, x):
+        """
+        Forward pass of the neural network.
+    
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, channels, height, width).
+    
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, num_classes) containing
+                          the log probabilities for each class.
+        """
         # Convolutional Block-1
         x = self.conv_block1(x)
         x = x + self.conv_block2(x)
@@ -75,6 +94,17 @@ class Session8_Model(nn.Module):
 
 
     def get_normalization_layer(self,normalization,out_channels,number_of_groups = None):
+        """
+        Create a normalization layer based on the specified normalization technique.
+
+        Args:
+            normalization (str): Type of normalization layer. Options: "layer", "group", or any other value (defaults to "batch").
+            out_channels (int): Number of output channels.
+            number_of_groups (int, optional): Number of groups for group normalization. Required only if normalization is "group".
+
+        Returns:
+            torch.nn.Module: Normalization layer based on the specified technique.
+        """
         # Select normalization type
         if normalization == "layer":
             _norm_layer = nn.GroupNorm(1, out_channels)
